@@ -1,0 +1,35 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_20-f11f23d0c387efbd154b0745f62c428054083b37",
+  "solcVersion": "0.8.20",
+  "solcLongVersion": "0.8.20+commit.a1b79de6",
+  "userSourceNameMap": {
+    "contracts/VeterinaryHealthEvents.sol": "project/contracts/VeterinaryHealthEvents.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/VeterinaryHealthEvents.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\ncontract VeterinaryHealthEvents {\r\n    struct HealthEvent {\r\n        bytes32 dataHash;    // Keccak256/SHA256 hash of event data (animal_id, type, date, etc.)\r\n        address animalOwner;\r\n        uint256 timestamp;\r\n        uint256 updatedAt;\r\n        string ipfsUri;      // Optional IPFS for full JSON details\r\n    }\r\n\r\n    struct Permissions {\r\n        bool canRead;\r\n        bool canWrite;\r\n    }\r\n\r\n    mapping(bytes32 => HealthEvent) private events;\r\n    mapping(address => Permissions) private permissions;\r\n    address public owner;\r\n\r\n    event HealthEventRecorded(\r\n        bytes32 indexed eventHash, \r\n        address indexed ownerAddr, \r\n        uint256 timestamp, \r\n        string ipfsUri\r\n    );\r\n\r\n    event HealthEventUpdated(\r\n        bytes32 indexed eventHash,\r\n        address indexed updatedBy,\r\n        uint256 updatedAt,\r\n        string ipfsUri\r\n    );\r\n\r\n    event PermissionsUpdated(\r\n        address indexed account,\r\n        bool canRead,\r\n        bool canWrite\r\n    );\r\n    \r\n    constructor() {\r\n        owner = msg.sender;\r\n    }\r\n\r\n    modifier onlyOwner() {\r\n        require(msg.sender == owner, \"Only owner\");\r\n        _;\r\n    }\r\n\r\n    modifier onlyReader() {\r\n        require(hasReadAccess(msg.sender), \"Read access denied\");\r\n        _;\r\n    }\r\n\r\n    modifier onlyWriter() {\r\n        require(hasWriteAccess(msg.sender), \"Write access denied\");\r\n        _;\r\n    }\r\n\r\n    function grantPermissions(address account, bool canRead, bool canWrite) external onlyOwner {\r\n        require(account != address(0), \"Invalid account\");\r\n        permissions[account] = Permissions({\r\n            canRead: canRead,\r\n            canWrite: canWrite\r\n        });\r\n        emit PermissionsUpdated(account, canRead, canWrite);\r\n    }\r\n\r\n    function revokePermissions(address account) external onlyOwner {\r\n        require(account != address(0), \"Invalid account\");\r\n        delete permissions[account];\r\n        emit PermissionsUpdated(account, false, false);\r\n    }\r\n\r\n    function hasReadAccess(address account) public view returns (bool) {\r\n        return account == owner || permissions[account].canRead || permissions[account].canWrite;\r\n    }\r\n\r\n    function hasWriteAccess(address account) public view returns (bool) {\r\n        return account == owner || permissions[account].canWrite;\r\n    }\r\n\r\n    function recordEvent(bytes32 _dataHash, string calldata _ipfsUri) external onlyWriter {\r\n        require(_dataHash != bytes32(0), \"Invalid hash\");\r\n        require(events[_dataHash].dataHash == bytes32(0), \"Event already recorded\");\r\n        events[_dataHash] = HealthEvent({\r\n            dataHash: _dataHash,\r\n            animalOwner: msg.sender,\r\n            timestamp: block.timestamp,\r\n            updatedAt: block.timestamp,\r\n            ipfsUri: _ipfsUri\r\n        });\r\n        emit HealthEventRecorded(_dataHash, msg.sender, block.timestamp, _ipfsUri);\r\n    }\r\n\r\n    function updateEvent(bytes32 _dataHash, string calldata _ipfsUri) external onlyWriter {\r\n        require(events[_dataHash].dataHash != bytes32(0), \"Event not found\");\r\n        events[_dataHash].ipfsUri = _ipfsUri;\r\n        events[_dataHash].updatedAt = block.timestamp;\r\n        emit HealthEventUpdated(_dataHash, msg.sender, block.timestamp, _ipfsUri);\r\n    }\r\n\r\n    function getEvent(bytes32 _dataHash) external view onlyReader returns (HealthEvent memory) {\r\n        return events[_dataHash];\r\n    }\r\n\r\n    function verifyEventExists(bytes32 _dataHash) external view onlyReader returns (bool) {\r\n        return events[_dataHash].dataHash != bytes32(0);\r\n    }\r\n}\r\n"
+      }
+    }
+  }
+}
